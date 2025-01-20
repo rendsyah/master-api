@@ -1,0 +1,28 @@
+services:
+  app:
+    build: .
+    container_name: master-api-container
+    ports:
+      - 5000:5000
+    env_file:
+      - .env
+    environment:
+      TZ: Asia/Jakarta
+    restart: always
+    volumes:
+      - master-api-volume:/vol/app
+      - ../public:/vol/public
+      - ../logs:/vol/logs
+    networks:
+      - shared-networks
+
+volumes:
+  master-api-volume:
+    name: master-api-volume
+    driver: local
+
+networks:
+  shared-networks:
+    name: shared-networks
+    driver: bridge
+    external: true
