@@ -1,0 +1,21 @@
+# compiled output
+dist
+node_modules
+
+# config
+.env.*
+.git
+.gitignore
+.dockerignore
+.prettierignore
+.vscode
+.husky
+Dockerfile
+docker-compose.yml
+docker.sh
+
+# misc
+eslint.config.mjs
+.prettierrc
+.npmrc
+README.md
