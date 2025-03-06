@@ -15,6 +15,17 @@ import { AppLoggerService } from '../logger';
 export class LoggingInterceptor implements NestInterceptor {
   constructor(private readonly appLoggerService: AppLoggerService) {}
 
+  hideSensitive(data: Record<string, unknown>) {
+    if (!data) return {};
+    const sensitiveFields = new Set(['password', 'otp']);
+    return Object.fromEntries(
+      Object.entries(data).map(([key, value]) => [
+        key,
+        sensitiveFields.has(key) ? '[REDACTED]' : value,
+      ]),
+    );
+  }
+
   intercept(context: ExecutionContext, next: CallHandler) {
     const request = context.switchToHttp().getRequest<Request>();
     const response = context.switchToHttp().getResponse<Response>();
@@ -22,7 +33,6 @@ export class LoggingInterceptor implements NestInterceptor {
     const startTime = Date.now();
 
     const intercept = {
-      reference: crypto.randomUUID(),
       req: {
         method: request.method,
         protocol: request.protocol,
@@ -37,17 +47,12 @@ export class LoggingInterceptor implements NestInterceptor {
           'content-type': request.headers['content-type'] ?? '',
           'x-forwarded-for': request.headers['x-forwarded-for'] ?? '',
         },
-        body: (() => {
-          if (!request.body) return {};
-          const sanitize = structuredClone(request.body);
-          if (sanitize.password) sanitize.password = '[REDACTED]';
-          return sanitize as unknown;
-        })(),
+        body: this.hideSensitive(request.body),
         query: { ...request.query },
         params: { ...request.params },
       },
-      res: {} as unknown,
-      stack: {} as unknown,
+      res: undefined as unknown,
+      stack: undefined as unknown,
       responseTime: 0,
     };
 
@@ -62,7 +67,7 @@ export class LoggingInterceptor implements NestInterceptor {
         };
         intercept.responseTime = responseTime;
 
-        this.appLoggerService.log('info', intercept);
+        this.appLoggerService.log('info', 'HTTP Request', intercept);
       }),
       catchError((error: unknown) => {
         const statusCode = error instanceof HttpException ? error.getStatus() : 500;
@@ -84,9 +89,9 @@ export class LoggingInterceptor implements NestInterceptor {
         intercept.responseTime = responseTime;
 
         if (statusCode === 500) {
-          this.appLoggerService.log('error', intercept);
+          this.appLoggerService.log('error', 'HTTP Request', intercept);
         } else {
-          this.appLoggerService.log('warn', intercept);
+          this.appLoggerService.log('warn', 'HTTP Request', intercept);
         }
 
         return throwError(() => error);

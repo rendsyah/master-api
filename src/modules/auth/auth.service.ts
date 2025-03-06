@@ -1,9 +1,9 @@
 import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
+import { AppConfigService } from 'src/commons/config';
 import { IUser, UtilsService } from 'src/commons/utils';
 import { User, UserAccessDetail, UserDevice, UserSession } from 'src/datasources/entities';
 
@@ -13,8 +13,8 @@ import { ReponseMenu } from './auth.types';
 @Injectable()
 export class AuthService {
   constructor(
+    private readonly appConfigService: AppConfigService,
     private readonly utilsService: UtilsService,
-    private readonly configService: ConfigService,
     private readonly jwtService: JwtService,
 
     @InjectRepository(User)
@@ -38,8 +38,8 @@ export class AuthService {
     const getSession = `${getNow}:${getRandomChar}`;
 
     const getToken = await this.jwtService.signAsync(params, {
-      secret: this.configService.get('JWT_SECRET', 'secret', { infer: true }),
-      expiresIn: this.configService.get('JWT_EXPIRES_IN', '1d', { infer: true }),
+      secret: this.appConfigService.JWT_SECRET,
+      expiresIn: this.appConfigService.JWT_EXPIRES_IN,
     });
 
     return {

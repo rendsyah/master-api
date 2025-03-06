@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { ServeStaticModule } from '@nestjs/serve-static';
-import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { join } from 'path';
 
@@ -11,18 +10,9 @@ import { AppService } from './app.service';
 import { UtilsModule } from './commons/utils';
 import { AllExceptionsFilter } from './commons/filters';
 import { LoggingInterceptor, TimeoutInterceptor } from './commons/interceptors';
+import { AppConfigModule, AppConfigService } from './commons/config';
 import { AppLoggerService } from './commons/logger';
 
-import {
-  MasterGeneral,
-  MasterMenu,
-  User,
-  UserAccess,
-  UserAccessDetail,
-  UserDevice,
-  UserForgot,
-  UserSession,
-} from './datasources/entities';
 import { RunnerModule } from './datasources/runner';
 
 import { AuthModule } from './modules/auth/auth.module';
@@ -30,10 +20,6 @@ import { UserModule } from './modules/user/user.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({
-      isGlobal: true,
-      envFilePath: ['.env'],
-    }),
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', '..', 'public'),
       serveRoot: '/api/v1/image',
@@ -44,32 +30,24 @@ import { UserModule } from './modules/user/user.module';
       },
     }),
     TypeOrmModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => {
+      imports: [AppConfigModule],
+      inject: [AppConfigService],
+      useFactory: (configService: AppConfigService) => {
         return {
-          type: configService.getOrThrow('DB_TYPE', { infer: true }),
-          host: configService.getOrThrow('DB_HOST', { infer: true }),
-          port: configService.getOrThrow('DB_PORT', { infer: true }),
-          username: configService.getOrThrow('DB_USER', { infer: true }),
-          password: configService.getOrThrow('DB_PASS', { infer: true }),
-          database: configService.getOrThrow('DB_NAME', { infer: true }),
+          type: configService.DB_TYPE,
+          host: configService.DB_HOST,
+          port: configService.DB_PORT,
+          username: configService.DB_USER,
+          password: configService.DB_PASS,
+          database: configService.DB_NAME,
           synchronize: false,
           logging: false,
           connectTimeoutMS: 10000,
-          entities: [
-            MasterGeneral,
-            MasterMenu,
-            User,
-            UserAccess,
-            UserAccessDetail,
-            UserDevice,
-            UserForgot,
-            UserSession,
-          ],
+          entities: [__dirname + '/**/*.entity{.ts,.js}'],
         } as TypeOrmModuleOptions;
       },
     }),
+    AppConfigModule,
     UtilsModule,
     RunnerModule,
 
@@ -89,8 +67,8 @@ export class AppModule {
   static port: number;
   static docs: number;
 
-  constructor(private readonly configService: ConfigService) {
-    AppModule.port = this.configService.getOrThrow('API_PORT', 8080, { infer: true });
-    AppModule.docs = this.configService.getOrThrow('API_DOCS', 0, { infer: true });
+  constructor(private readonly appConfigService: AppConfigService) {
+    AppModule.port = this.appConfigService.API_PORT;
+    AppModule.docs = this.appConfigService.API_DOCS;
   }
 }

@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
-import { ConfigService } from '@nestjs/config';
 import dayjs from 'dayjs';
 import argon2 from '@node-rs/argon2';
+
+import { AppConfigService } from '../config';
 
 import {
   IPagination,
@@ -15,7 +16,7 @@ import {
 
 @Injectable()
 export class UtilsService {
-  constructor(private readonly configService: ConfigService) {}
+  constructor(private readonly appConfigService: AppConfigService) {}
 
   public validateString(request: string, type: IValidateString): string {
     if (!request) return '';
@@ -120,44 +121,32 @@ export class UtilsService {
   }
 
   public validateEncrypt(request: string): string {
-    const cryptoIv = randomBytes(16);
-    const cipher = createCipheriv(
-      this.configService.get('API_CRYPTO_ALGORITHM', 'aes-256-gcm', { infer: true }),
-      this.configService.get('API_CRYPTO_SECRET_KEY', 'secret', { infer: true }),
-      cryptoIv,
-    );
+    const cryptoIv = randomBytes(12);
+    const cipher = createCipheriv('aes-256-gcm', this.appConfigService.CRYPTO_SECRET, cryptoIv);
     const encrypted = Buffer.concat([cipher.update(request, 'utf-8'), cipher.final()]);
-    const finalResult = cryptoIv.toString('hex') + ':' + encrypted.toString('hex');
+    const encryptedTag = cipher.getAuthTag();
+
+    const finalResult = Buffer.concat([cryptoIv, encryptedTag, encrypted]).toString('base64url');
 
     return finalResult;
   }
 
   public validateDecrypt(request: string): string | null {
-    const [cryptoIvHex, encryptedHex] = request.split(':');
+    const data = Buffer.from(request, 'base64url');
+    const cryptoIv = data.subarray(0, 12);
+    const encryptedTag = data.subarray(12, 28);
+    const encryptedText = data.subarray(28);
 
-    if (!cryptoIvHex || !encryptedHex) {
-      return null;
-    }
+    const decipher = createDecipheriv('aes-256-gcm', this.appConfigService.CRYPTO_SECRET, cryptoIv);
 
-    try {
-      const encryptedText = Buffer.from(encryptedHex, 'hex');
-      const decipher = createDecipheriv(
-        this.configService.get('API_CRYPTO_ALGORITHM', 'aes-256-gcm', { infer: true }),
-        this.configService.get('API_CRYPTO_SECRET_KEY', 'secret', { infer: true }),
-        Buffer.from(cryptoIvHex, 'hex'),
-      );
+    decipher.setAuthTag(encryptedTag);
 
-      const finalResult = Buffer.concat([
-        decipher.update(encryptedText),
-        decipher.final(),
-      ]).toString();
+    const finalResult = Buffer.concat([
+      decipher.update(encryptedText),
+      decipher.final(),
+    ]).toString();
 
-      return finalResult;
-
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    } catch (error) {
-      return null;
-    }
+    return finalResult;
   }
 
   public validateSafeJSON<T>(request: string, fallback: T): T {
@@ -167,8 +156,7 @@ export class UtilsService {
   }
 
   public async validateHash(request: string): Promise<string> {
-    const salt = Buffer.from(this.validateRandomChar(5, 'alphanumeric'), 'base64');
-    return await argon2.hash(request, { salt });
+    return await argon2.hash(request);
   }
 
   public async validateCompare(hash: string, request: string): Promise<boolean> {
