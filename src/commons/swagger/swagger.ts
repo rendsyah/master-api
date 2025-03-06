@@ -3,8 +3,8 @@ import { DocumentBuilder, OpenAPIObject, SwaggerModule } from '@nestjs/swagger';
 
 export const SwaggerService = (app: INestApplication): OpenAPIObject => {
   const document = new DocumentBuilder()
-    .setTitle('MASTER API')
-    .setDescription('Master API documentation')
+    .setTitle('Master API')
+    .setDescription('Official Master API Documentation')
     .setTermsOfService('http://example.com/terms')
     .setContact('Developer', 'http://www.example.com/support', 'example@gmail.com')
     .setVersion('1.0')
