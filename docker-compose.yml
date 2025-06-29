@@ -1,0 +1,26 @@
+services:
+  master-api:
+    container_name: master-api
+    image: master-api:1.0.0
+    build:
+      context: .
+      args:
+        - API_PORT=${API_PORT}
+    ports:
+      - 127.0.0.1:${API_PORT}:${API_PORT}
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      TZ: Asia/Jakarta
+    volumes:
+      - ../public:/vol/public
+    entrypoint: docker-entrypoint.sh
+    restart: always
+    networks:
+      - shared-networks
+
+networks:
+  shared-networks:
+    name: shared-networks
+    external: true
