@@ -29,6 +29,13 @@ export class UserAccess {
   })
   status: number;
 
+  @Column({
+    type: 'smallint',
+    default: 1,
+    comment: '0 -> not show, 1 -> show',
+  })
+  is_show: number;
+
   @Column({ type: 'int', default: null, nullable: true })
   @Index()
   created_by: number;
