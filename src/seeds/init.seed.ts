@@ -26,6 +26,7 @@ export const seedInit = async (dataSource: DataSource) => {
       const accessResult = await manager.getRepository(UserAccess).insert({
         name: 'Administrator',
         description: 'Administrator Access',
+        is_show: 0,
       });
 
       await manager.getRepository(UserAccessDetail).insert({
